@@ -65,7 +65,7 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <h1>\u{1F517} URL Shortener</h1>
+        <h1>{'\u{1F517}'} URL Shortener</h1>
         <p>Shorten URLs, track clicks, share anywhere.</p>
       </header>
 
@@ -102,7 +102,7 @@ export default function App() {
             <div className="url-stats">
               <span className="clicks">{u.clicks} clicks</span>
               <span className="date">{new Date(u.createdAt).toLocaleDateString()}</span>
-              <button className="delete-btn" onClick={() => deleteUrl(u.shortCode)}>\u{1F5D1}</button>
+              <button className="delete-btn" onClick={() => deleteUrl(u.shortCode)}>{'\u{1F5D1}'}</button>
             </div>
           </div>
         ))}
