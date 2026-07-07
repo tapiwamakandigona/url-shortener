@@ -148,7 +148,9 @@ app.get('/:code', (req, res) => {
     ip: req.ip || '',
   });
   
-  res.redirect(301, entry.originalUrl);
+  // Use 302 (temporary) so browsers re-visit this server on each click,
+  // allowing accurate analytics tracking. A 301 would be cached permanently.
+  res.redirect(302, entry.originalUrl);
 });
 
 const PORT = process.env.PORT || 3001;
