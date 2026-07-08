@@ -3,8 +3,16 @@ import crypto from 'crypto';
 import path from 'path';
 
 const app = express();
+// Behind a reverse proxy (e.g. Appwrite Sites) trust X-Forwarded-* so
+// req.protocol / req.ip reflect the real client request.
+app.set('trust proxy', true);
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../client/dist')));
+
+// Directory containing the built client (overridable for bundled deploys).
+const CLIENT_DIST = process.env.CLIENT_DIST
+  ? path.resolve(process.env.CLIENT_DIST)
+  : path.join(__dirname, '../client/dist');
+app.use(express.static(CLIENT_DIST));
 
 interface ShortenedUrl {
   id: string;
@@ -87,8 +95,15 @@ app.post('/api/shorten', (req, res) => {
   
   urls.set(shortCode, entry);
   
+  // Build the public short URL. Some reverse proxies (e.g. Appwrite Sites)
+  // terminate TLS upstream and report the internal hop as plain http, so for
+  // non-local hosts we always advertise https.
+  const host = req.get('host') || '';
+  const isLocalHost = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host);
+  const protocol = isLocalHost ? req.protocol : 'https';
+
   res.status(201).json({
-    shortUrl: `${req.protocol}://${req.get('host')}/${shortCode}`,
+    shortUrl: `${protocol}://${host}/${shortCode}`,
     shortCode,
     originalUrl: url,
   });
@@ -128,7 +143,7 @@ app.delete('/api/urls/:code', requireAdmin, (req, res) => {
 app.get('/:code', (req, res) => {
   const entry = urls.get(req.params.code);
   
-  if (!entry) return res.status(404).sendFile(path.join(__dirname, '../client/dist/index.html'));
+  if (!entry) return res.status(404).sendFile(path.join(CLIENT_DIST, 'index.html'));
   
   if (entry.expiresAt && Date.now() > entry.expiresAt) {
     urls.delete(req.params.code);
