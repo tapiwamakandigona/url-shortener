@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://url.tapiwa.me/sitemap.xml
