@@ -40,13 +40,8 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url, alias: alias || undefined }),
       });
-      let data: any;
-      try {
-        data = await res.json();
-      } catch {
-        throw new Error('The shortener backend is not available right now. Please try again later.');
-      }
-      if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again later.');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
       setResult(data);
       setUrl('');
       setAlias('');
@@ -59,9 +54,7 @@ export default function App() {
   }
 
   async function deleteUrl(code: string) {
-    try {
-      await fetch(`/api/urls/${code}`, { method: 'DELETE' });
-    } catch {}
+    await fetch(`/api/urls/${code}`, { method: 'DELETE' });
     fetchUrls();
   }
 
@@ -72,7 +65,7 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <h1>🔗 URL Shortener</h1>
+        <h1>{'\u{1F517}'} URL Shortener</h1>
         <p>Shorten URLs, track clicks, share anywhere.</p>
       </header>
 
@@ -109,7 +102,7 @@ export default function App() {
             <div className="url-stats">
               <span className="clicks">{u.clicks} clicks</span>
               <span className="date">{new Date(u.createdAt).toLocaleDateString()}</span>
-              <button className="delete-btn" onClick={() => deleteUrl(u.shortCode)}>🗑</button>
+              <button className="delete-btn" onClick={() => deleteUrl(u.shortCode)}>{'\u{1F5D1}'}</button>
             </div>
           </div>
         ))}

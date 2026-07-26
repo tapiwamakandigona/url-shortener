@@ -1,17 +1,19 @@
-import request from 'supertest';
+// TODO: Install supertest and import the Express app to write integration tests.
+// import request from 'supertest';
 
-// Basic test structure
 describe('URL Shortener API', () => {
   it('should create a short URL', async () => {
-    // Test would use supertest against the express app
+    // TODO: Test POST /api/shorten with a valid URL
     expect(true).toBe(true);
   });
-  
+
   it('should reject invalid URLs', async () => {
+    // TODO: Test POST /api/shorten with an invalid URL returns 400
     expect(true).toBe(true);
   });
-  
+
   it('should track clicks', async () => {
+    // TODO: Test GET /:code increments click count
     expect(true).toBe(true);
   });
 });
