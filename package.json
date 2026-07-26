@@ -5,10 +5,12 @@
   "scripts": {
     "dev": "tsx watch server/index.ts",
     "build": "cd client && npm run build && cd .. && tsc -p tsconfig.server.json",
+    "build:bundle": "cd client && npm ci && npm run build && cd .. && esbuild server/index.ts --bundle --platform=node --target=node22 --outfile=dist-bundle/server.js && rm -rf dist-bundle/dist && cp -r client/dist dist-bundle/dist",
+    "start:bundle": "CLIENT_DIST=dist-bundle/dist node dist-bundle/server.js",
     "test": "jest --passWithNoTests"
   },
   "dependencies": { "express": "^4.18.2" },
-  "devDependencies": { "@types/express": "^4.17.21", "@types/jest": "^29.5.0", "jest": "^29.7.0", "ts-jest": "^29.1.0", "tsx": "^4.7.0", "typescript": "^5.3.0" },
+  "devDependencies": { "esbuild": "^0.24.0", "@types/express": "^4.17.21", "@types/jest": "^29.5.0", "jest": "^29.7.0", "ts-jest": "^29.1.0", "tsx": "^4.7.0", "typescript": "^5.3.0" },
   "author": "Tapiwa Makandigona",
   "license": "MIT"
 }
