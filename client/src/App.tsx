@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import './App.css';
+import { track } from './analytics';
 
 /** A link this browser created. The admin list is key-gated (as it should be), so the page
  *  remembers your own links locally instead of asking the server for everybody's. */
@@ -87,6 +88,7 @@ function Row({ mine, onForget }: { mine: Mine; onForget: (code: string) => void 
   async function copy() {
     try {
       await navigator.clipboard.writeText(mine.shortUrl);
+      track('short_link_copied', { surface: 'history' });
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch { /* clipboard blocked; the field is selectable anyway */ }
@@ -113,7 +115,12 @@ function Row({ mine, onForget }: { mine: Mine; onForget: (code: string) => void 
       </div>
       <div className="row-actions">
         <button type="button" onClick={copy} className="ghost">{copied ? 'Copied' : 'Copy'}</button>
-        <button type="button" onClick={() => setOpen((v) => !v)} className="ghost"
+        <button type="button" onClick={() => {
+                  setOpen((v) => {
+                    if (!v) track('link_details_opened');
+                    return !v;
+                  });
+                }} className="ghost"
                 aria-expanded={open}>{open ? 'Hide' : 'Details'}</button>
         <button type="button" onClick={() => onForget(mine.code)} className="ghost quiet"
                 title="Remove from this list (the link keeps working)">Forget</button>
@@ -125,6 +132,7 @@ function Row({ mine, onForget }: { mine: Mine; onForget: (code: string) => void 
             <img src={`/api/qr/${encodeURIComponent(mine.code)}.svg`} width={132} height={132}
                  alt={`QR code for ${mine.shortUrl}`} loading="lazy" />
             <a className="ghost" href={`/api/qr/${encodeURIComponent(mine.code)}.png`}
+               onClick={() => track('qr_download', { format: 'png' })}
                download={`${mine.code}-qr.png`}>Download PNG</a>
           </div>
           <div className="detail-stats">
@@ -155,6 +163,7 @@ export default function App() {
   const [result, setResult] = useState<Mine | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [resultCopied, setResultCopied] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE, JSON.stringify(mine.slice(0, 50)));
@@ -172,8 +181,16 @@ export default function App() {
     setResult(null);
     setBusy(true);
     try {
+      const customAlias = alias.trim().length > 0;
+      const expiryEvent: Record<string, string> = {
+        '': 'never',
+        '3600': '1h',
+        '86400': '1d',
+        '604800': '1w',
+        '2592000': '30d',
+      };
       const body: Record<string, unknown> = { url: url.trim() };
-      if (alias.trim()) body.alias = alias.trim();
+      if (customAlias) body.alias = alias.trim();
       if (expiry) body.expiresIn = Number(expiry);
       const res = await fetch('/api/shorten', {
         method: 'POST',
@@ -190,6 +207,10 @@ export default function App() {
       };
       setResult(entry);
       setMine((prev) => [entry, ...prev.filter((m) => m.code !== entry.code)]);
+      track('short_link_created', {
+        custom_alias: customAlias,
+        expiry: expiryEvent[expiry] || 'never',
+      });
       setUrl(''); setAlias(''); setExpiry('');
     } catch (err: any) {
       setError(err?.message || 'Something went wrong');
@@ -199,6 +220,16 @@ export default function App() {
   }
 
   const forget = (code: string) => setMine((prev) => prev.filter((m) => m.code !== code));
+
+  async function copyResult() {
+    if (!result) return;
+    try {
+      await navigator.clipboard.writeText(result.shortUrl);
+      track('short_link_copied', { surface: 'result' });
+      setResultCopied(true);
+      setTimeout(() => setResultCopied(false), 1600);
+    } catch { /* clipboard blocked; the link remains selectable */ }
+  }
 
   return (
     <>
@@ -263,6 +294,9 @@ export default function App() {
                 <a className="result-url" href={result.shortUrl} target="_blank" rel="noopener">
                   {result.shortUrl.replace(/^https?:\/\//, '')}
                 </a>
+                <button type="button" className="ghost result-copy" onClick={copyResult}>
+                  {resultCopied ? 'Copied' : 'Copy link'}
+                </button>
               </div>
               <img className="result-qr" src={`/api/qr/${encodeURIComponent(result.code)}.svg`}
                    width={104} height={104} alt={`QR code for ${result.shortUrl}`} />

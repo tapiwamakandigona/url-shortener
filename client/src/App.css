@@ -166,7 +166,7 @@ button { font: inherit; cursor: pointer; }
   border: 1px solid var(--hairline);
   border-radius: 16px;
 }
-.result-text { min-width: 0; }
+.result-text { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .result-label { margin: 0 0 4px; font-size: 12.5px; color: var(--muted); }
 .result-url {
   font-family: var(--mono);
@@ -176,6 +176,8 @@ button { font: inherit; cursor: pointer; }
   border-bottom: 1px solid var(--coral);
   word-break: break-all;
 }
+.result-label { flex-basis: 100%; }
+.result-copy { flex: none; }
 .result-qr { margin-left: auto; border-radius: 10px; background: #fff; padding: 6px; flex: none; }
 
 /* ── list ── */
