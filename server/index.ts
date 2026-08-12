@@ -9,6 +9,49 @@ const app = express();
 // req.protocol / req.ip reflect the real client request.
 app.set('trust proxy', true);
 app.use(express.json({ limit: '16kb' }));
+// --- Security headers -------------------------------------------------------
+// A link shortener is a redirect engine, so it is an attractive target for
+// clickjacking and injected script. These headers are set before any route so
+// they apply to redirects, API responses, QR images and static assets alike.
+//
+// The CSP is deliberately explicit rather than permissive: it allows the app's
+// own bundle, the consent-gated Google tag (which only ever loads after the
+// visitor opts in), and nothing else. `object-src 'none'` and
+// `frame-ancestors 'none'` remove plugin and framing attack surface.
+const CSP = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  "object-src 'none'",
+  // Only same-origin scripts plus the consent-gated Google tag, which is never
+  // fetched unless the visitor opts in. No 'unsafe-inline': the built HTML has
+  // no executable inline script, so allowing it would only help an attacker.
+  "script-src 'self' https://www.googletagmanager.com",
+  // The consent panel styles itself from one injected <style> element and the
+  // typefaces come from Google Fonts, so both are allowed here.
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "img-src 'self' data: blob: https://www.google-analytics.com https://www.googletagmanager.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.googletagmanager.com",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "upgrade-insecure-requests",
+].join('; ');
+
+app.use((_req, res, next) => {
+  res.setHeader('Content-Security-Policy', CSP);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  res.setHeader('Permissions-Policy',
+    'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()');
+  res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+  next();
+});
+
 
 // Directory containing the built client (overridable for bundled deploys).
 const CLIENT_DIST = process.env.CLIENT_DIST
