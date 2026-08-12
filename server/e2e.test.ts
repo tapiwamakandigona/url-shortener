@@ -150,3 +150,42 @@ describe('startup safety (defect 1)', () => {
     expect(storeFromEnv({ APPWRITE_PROJECT_ID: 'p', APPWRITE_API_KEY: 'k' }).driver).toBe('appwrite');
   });
 });
+
+describe('security headers', () => {
+  const app = freshApp('test-key');
+
+  it('sends a strict CSP plus hardening headers, and keeps the consent-gated tag loadable', async () => {
+    const r = await request(app).get('/api/health');
+    const csp = r.headers['content-security-policy'] || '';
+    expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).toContain("object-src 'none'");
+    expect(csp).toContain("base-uri 'self'");
+    expect(csp).toContain('https://www.googletagmanager.com');
+    // Scripts must stay hash/origin-based: the built HTML has no executable
+    // inline script, so 'unsafe-inline' here would only help an attacker.
+    expect(csp).toMatch(/script-src [^;]*/);
+    expect(csp.match(/script-src [^;]*/)![0]).not.toContain("'unsafe-inline'");
+    // The typefaces are served by Google Fonts; a CSP that omits them silently
+    // strips the site's styling, which is how this policy first broke.
+    expect(csp).toContain('https://fonts.googleapis.com');
+    expect(csp).toContain('https://fonts.gstatic.com');
+    // no wildcard source anywhere
+    expect(csp).not.toMatch(/(^|[ ;])\*/);
+    expect(r.headers['x-content-type-options']).toBe('nosniff');
+    expect(r.headers['x-frame-options']).toBe('DENY');
+    expect(r.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
+    expect(r.headers['cross-origin-opener-policy']).toBe('same-origin');
+    expect(r.headers['strict-transport-security']).toContain('max-age=63072000');
+    expect(r.headers['permissions-policy']).toContain('camera=()');
+  });
+
+  it('applies the headers to redirects too', async () => {
+    const created = await request(app).post('/api/shorten').send({ url: 'https://tapiwa.me/headers-test' });
+    expect(created.status).toBe(201);
+    const r = await request(app).get(`/${created.body.shortCode}`).redirects(0);
+    expect([301, 302, 307, 308]).toContain(r.status);
+    expect(r.headers['x-content-type-options']).toBe('nosniff');
+    expect(r.headers['content-security-policy']).toContain("default-src 'self'");
+  });
+});
